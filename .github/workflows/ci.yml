@@ -71,9 +71,31 @@ jobs:
               print(f"| {k} | {s['mae']} | {s['rmse']} |")
           PY
 
+  observability-check:
+    name: Prometheus rules + Grafana dashboard check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: promtool check config and alert rules
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/deploy/prometheus:/etc/prometheus:ro" \
+            prom/prometheus:v3.16.0 check config /etc/prometheus/prometheus.yml
+      - name: Grafana dashboard JSON parses and every panel has a query
+        run: |
+          python3 - <<'PY'
+          import json
+          d = json.load(open("deploy/grafana/dashboards/aqi-pipeline.json"))
+          panels = [p for p in d["panels"] if p["type"] != "row"]
+          assert panels and all(p["targets"] for p in panels)
+          print(f"{len(panels)} panels OK")
+          PY
+      - name: Compose file is valid
+        run: docker compose -f deploy/docker-compose.yml config --quiet
+
   build-smoke:
     name: Build image + smoke test
-    needs: [lint-test, data-gate, model-gate]
+    needs: [lint-test, data-gate, model-gate, observability-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
