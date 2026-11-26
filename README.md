@@ -52,8 +52,8 @@ The CI/CD/CT pipeline is the product; a next-day AQI model for **New Delhi** is 
 | Training: features, models, registry, model gate | Rachit Sharma | `src/aqi/models` | done |
 | Observability: metrics, Prometheus rules, Grafana dashboard | Sidharth Rohilla | `src/aqi/monitor`, `src/aqi/serve`, `deploy/` | done (configs checked in CI; Grafana stack runs locally via compose) |
 | CD: image build, smoke test, GHCR release, Pages | Keshav Sharma | `Dockerfile`, `ci.yml` | done |
-| CT: monitor, sensor-fault block, retrain + gate | Keshav Sharma | `src/aqi/retrain`, `ct.yml` | done (gate promote/reject paths covered by CI tests; no promotion on GitHub yet because the champion is still healthy) |
-| Rollback | Keshav Sharma | `rollback.yml` | image rollback run in Actions; model rollback needs a second champion first |
+| CT: monitor, sensor-fault block, retrain + gate | Keshav Sharma | `src/aqi/retrain`, `ct.yml` | done (real promotion run in Actions: v2, then v3) |
+| Rollback | Keshav Sharma | `rollback.yml` | done (model rollback v2 -> v1 and image rollback both run in Actions) |
 
 A stage is marked **done** only once it runs green in GitHub Actions.
 
