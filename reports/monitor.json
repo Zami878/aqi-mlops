@@ -1,0 +1,38 @@
+{
+  "checked_at": "2026-11-26T21:18:21Z",
+  "simulated": false,
+  "data_end": "2026-11-26",
+  "champion": "v1",
+  "validation": {
+    "rows": 1575,
+    "start": "2022-08-05",
+    "end": "2026-11-26",
+    "errors": [],
+    "faults": [],
+    "ok": true
+  },
+  "psi": {
+    "aqi": 0.0264,
+    "pm2_5": 0.0264,
+    "pm10": 0.1092,
+    "no2": 0.5318,
+    "co": 0.5392,
+    "temp": 0.4412,
+    "humidity": 0.8989,
+    "wind": 1.4665
+  },
+  "performance": {
+    "n": 30,
+    "mae": 46.3,
+    "persistence_mae": 50.74
+  },
+  "drift_warnings": [
+    "co",
+    "humidity",
+    "no2",
+    "temp",
+    "wind"
+  ],
+  "decision": "healthy",
+  "reasons": []
+}

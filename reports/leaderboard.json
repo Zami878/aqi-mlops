@@ -1,0 +1,23 @@
+{
+  "train_start": "2022-08-05",
+  "train_end": "2026-08-27",
+  "holdout_start": "2026-08-28",
+  "holdout_end": "2026-11-25",
+  "scores": {
+    "persistence": {
+      "mae": 49.59,
+      "rmse": 65.26,
+      "n": 90
+    },
+    "ridge": {
+      "mae": 47.55,
+      "rmse": 60.78,
+      "n": 90
+    },
+    "hgb": {
+      "mae": 45.66,
+      "rmse": 59.57,
+      "n": 90
+    }
+  }
+}

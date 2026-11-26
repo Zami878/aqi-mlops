@@ -1,0 +1,33 @@
+{
+  "action": "promoted",
+  "candidate_version": "v1",
+  "promote": true,
+  "checks": {
+    "predictions_finite": true,
+    "beats_persistence": true,
+    "beats_champion": true
+  },
+  "holdout_start": "2026-08-28",
+  "holdout_end": "2026-11-25",
+  "train_start": "2022-08-05",
+  "train_end": "2026-08-27",
+  "scores": {
+    "candidate": {
+      "mae": 45.66,
+      "rmse": 59.57,
+      "n": 90
+    },
+    "champion": null,
+    "persistence": {
+      "mae": 49.59,
+      "rmse": 65.26,
+      "n": 90
+    }
+  },
+  "champion_version": null,
+  "trigger": [
+    "no champion model yet (bootstrap)"
+  ],
+  "monitor_decision": "retrain",
+  "champion_after": "v1"
+}
