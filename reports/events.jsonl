@@ -4,3 +4,4 @@
 {"time": "2026-11-26T21:36:48Z", "event": "skipped", "run": "45899278583", "champion": "v1", "candidate": null, "reasons": ["monitor decision: healthy"], "checks": null}
 {"time": "2026-11-26T22:15:03Z", "event": "monitor", "run": "45903509293", "decision": "healthy", "reasons": []}
 {"time": "2026-11-26T22:15:04Z", "event": "promoted", "run": "45903509293", "champion": "v2", "candidate": "v2", "reasons": ["forced"], "checks": {"predictions_finite": true, "beats_persistence": true, "beats_champion": true}}
+{"time": "2026-11-26T22:18:42Z", "event": "rollback", "run": "45903895261", "champion": "v1", "previous": "v2"}
