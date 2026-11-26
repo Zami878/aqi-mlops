@@ -1,0 +1,34 @@
+groups:
+  - name: aqi-pipeline
+    rules:
+      - alert: AqiApiDown
+        expr: up{job="aqi-api"} == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: AQI API is not responding to Prometheus scrapes
+
+      - alert: AqiSensorFault
+        expr: aqi_data_faults > 0
+        labels: {severity: warning}
+        annotations:
+          summary: Sensor-fault pattern in recent data; retraining is blocked
+
+      - alert: AqiRetrainNeeded
+        expr: aqi_monitor_decision{decision="retrain"} == 1
+        labels: {severity: info}
+        annotations:
+          summary: Monitor decided the champion should be retrained
+
+      - alert: AqiModelLostSkill
+        expr: aqi_recent_mae{model="champion"} >= aqi_recent_mae{model="persistence"}
+        labels: {severity: warning}
+        annotations:
+          summary: Champion is no better than persistence on recent unseen days
+
+      - alert: AqiHighLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(aqi_request_seconds_bucket[5m]))) > 0.5
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: p95 API latency above 500 ms

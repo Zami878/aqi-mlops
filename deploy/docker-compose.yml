@@ -1,0 +1,54 @@
+# Local stack: API + Prometheus + Grafana (+ simulated traffic so request panels have data).
+#   make up      -> builds the API from this repo
+#   Host ports can be changed with API_PORT, PROMETHEUS_PORT, GRAFANA_PORT (8000/9090/3000)
+#   AQI_IMAGE=ghcr.io/zami878/aqi-mlops:latest make up-release   -> runs the released image
+name: aqi-mlops
+
+services:
+  api:
+    image: ${AQI_IMAGE:-aqi-api:dev}
+    build:
+      context: ..
+    ports:
+      - "${API_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.16.0
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    depends_on: [api]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.2.7
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/aqi-pipeline.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    depends_on: [prometheus]
+    restart: unless-stopped
+
+  # Simulated client traffic (labelled as such on the dashboard), so latency and request-rate
+  # panels show something during a demo.
+  loadgen:
+    image: curlimages/curl:8.23.0
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          curl -s -o /dev/null http://api:8000/forecast
+          curl -s -o /dev/null http://api:8000/model
+          sleep 2
+        done
+    depends_on: [api]
+    restart: unless-stopped
