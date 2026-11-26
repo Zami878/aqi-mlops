@@ -44,3 +44,11 @@ def test_metrics_expose_pipeline_state(client):
     text = client.get("/metrics").text
     for name in ("aqi_forecast", "aqi_model_info", "aqi_requests_total", "aqi_drift_psi"):
         assert name in text
+
+
+def test_dashboard_page_builds_from_repo_state():
+    from aqi import report
+
+    page = report.build()
+    assert "Delhi AQI" in page and "<svg" in page
+    assert "Model leaderboard" in page and "Latest promotion gate" in page
