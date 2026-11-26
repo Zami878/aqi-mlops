@@ -1,0 +1,1 @@
+"""Serving stage: FastAPI app."""
