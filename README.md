@@ -47,12 +47,13 @@ The CI/CD/CT pipeline is the product; a next-day AQI model for **New Delhi** is 
 
 | Stage | Owner | Module | State |
 |---|---|---|---|
-| CI: lint + unit tests | Keshav Sharma | `.github/workflows/ci.yml` | in progress |
-| Data: ingestion, CPCB AQI, validation gate | Shivam Kumar | `src/aqi/data` | in progress |
-| Training: features, models, registry, model gate | Rachit Sharma | `src/aqi/models` | in progress |
-| Observability: metrics, Prometheus, Grafana, alerts, drift | Sidharth Rohilla | `src/aqi/serve` metrics, `src/aqi/monitor`, `deploy/` | in progress |
-| CD: image build, smoke test, GHCR release, Pages | Keshav Sharma | `Dockerfile`, `ci.yml` | in progress |
-| CT: retrain trigger, promotion gate, rollback | Keshav Sharma | `src/aqi/retrain`, `ct.yml`, `rollback.yml` | in progress |
+| CI: lint + unit tests | Keshav Sharma | `.github/workflows/ci.yml` | done |
+| Data: ingestion, CPCB AQI, validation gate | Shivam Kumar | `src/aqi/data` | done |
+| Training: features, models, registry, model gate | Rachit Sharma | `src/aqi/models` | done |
+| Observability: metrics, Prometheus rules, Grafana dashboard | Sidharth Rohilla | `src/aqi/monitor`, `src/aqi/serve`, `deploy/` | done (configs checked in CI; Grafana stack runs locally via compose) |
+| CD: image build, smoke test, GHCR release, Pages | Keshav Sharma | `Dockerfile`, `ci.yml` | done |
+| CT: monitor, sensor-fault block, retrain + gate | Keshav Sharma | `src/aqi/retrain`, `ct.yml` | done (gate promote/reject paths covered by CI tests; no promotion on GitHub yet because the champion is still healthy) |
+| Rollback | Keshav Sharma | `rollback.yml` | image rollback run in Actions; model rollback needs a second champion first |
 
 A stage is marked **done** only once it runs green in GitHub Actions.
 
