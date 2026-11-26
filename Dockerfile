@@ -1,5 +1,8 @@
 FROM python:3.12-slim
 
+LABEL org.opencontainers.image.source="https://github.com/Zami878/aqi-mlops" \
+      org.opencontainers.image.description="Delhi AQI prediction API (PB-3)"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     AQI_HOME=/app

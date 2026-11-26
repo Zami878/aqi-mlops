@@ -1,0 +1,70 @@
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      what:
+        description: "model = restore the previous champion and redeploy; image = point :latest at an earlier image"
+        type: choice
+        options: [model, image]
+        default: model
+      image_sha:
+        description: "For 'image': the commit SHA tag of the image to restore"
+        required: false
+
+concurrency:
+  group: ct # never run alongside a CT run
+  cancel-in-progress: false
+
+jobs:
+  model:
+    if: inputs.what == 'model'
+    name: Roll back champion model
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      - name: Restore previous champion
+        run: python -m aqi.retrain rollback | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Commit and redeploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add registry reports
+          git commit -m "rollback: restore previous champion ($(python -c "import json; print(json.load(open('registry/champion.json'))['champion'])"))"
+          git push
+          gh workflow run ci.yml --ref main
+
+  image:
+    if: inputs.what == 'image'
+    name: Point :latest at an earlier image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify and retag
+        run: |
+          test -n "${{ inputs.image_sha }}" || { echo "image_sha is required"; exit 1; }
+          IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+          docker pull "$IMAGE:${{ inputs.image_sha }}"
+          docker run -d --name aqi -p 8000:8000 "$IMAGE:${{ inputs.image_sha }}"
+          ./deploy/smoke.sh http://localhost:8000 ${{ inputs.image_sha }}
+          docker tag "$IMAGE:${{ inputs.image_sha }}" "$IMAGE:latest"
+          docker push "$IMAGE:latest"
+          echo "Rolled \`:latest\` back to \`$IMAGE:${{ inputs.image_sha }}\`" >> "$GITHUB_STEP_SUMMARY"

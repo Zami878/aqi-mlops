@@ -1,0 +1,97 @@
+name: Continuous training
+
+on:
+  schedule:
+    - cron: "30 2 * * *" # 08:00 IST daily, after the previous day is complete
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Retrain even if the monitor says the champion is healthy (still gated)
+        type: boolean
+        default: false
+      simulate_fault:
+        description: Also run a simulated stuck-sensor check to show retraining gets blocked
+        type: boolean
+        default: false
+
+concurrency:
+  group: ct
+  cancel-in-progress: false
+
+permissions:
+  contents: write # commit refreshed data, registry and reports
+  actions: write # trigger the CI/CD workflow afterwards
+
+jobs:
+  ct:
+    name: Fetch -> validate -> monitor -> retrain -> gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+
+      - name: Fetch latest Delhi data
+        run: python -m aqi.data fetch
+
+      - name: Data validation gate (stops the run on hard errors)
+        run: python -m aqi.data validate
+
+      - name: Monitor champion (drift, skill, sensor faults)
+        run: python -m aqi.monitor
+
+      - name: "Demo: simulated stuck sensor (not saved)"
+        if: inputs.simulate_fault
+        run: |
+          python -m aqi.monitor --simulate-fault | tee simulated.json
+          python -c "import json; d=json.load(open('simulated.json')); assert d['decision']=='blocked_sensor_fault', d['decision']; print('retraining correctly blocked')"
+
+      - name: Retrain + promotion gate
+        run: python -m aqi.retrain run ${{ inputs.force && '--force' || '' }}
+
+      - name: Leaderboard
+        run: python -m aqi.models leaderboard
+
+      - name: Job summary
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          m = json.load(open("reports/monitor.json"))
+          g = json.load(open("reports/gate.json"))
+          print(f"## CT run: data through {m['data_end']}")
+          print(f"**Monitor decision:** `{m['decision']}`  ")
+          print("**Reasons:** " + ("; ".join(m["reasons"]) or "none"))
+          print(f"\n**Drift warnings (PSI >= 0.25):** {', '.join(m['drift_warnings']) or 'none'}")
+          print(f"\n**Retrain action:** `{g['action']}`, champion now `{g['champion_after']}`")
+          if g.get("checks"):
+              print("\n| gate check | result |\n|---|---|")
+              for k, v in g["checks"].items():
+                  print(f"| {k} | {'pass' if v else 'FAIL'} |")
+              print("\n| model | holdout MAE |\n|---|---|")
+              for k, s in g["scores"].items():
+                  if s:
+                      print(f"| {k} | {s['mae']} |")
+          PY
+
+      - name: Commit data, registry and reports
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data registry reports
+          if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          ACTION=$(python -c "import json; print(json.load(open('reports/gate.json'))['action'])")
+          git commit -m "ct: $(date -u +%F) run, retrain $ACTION"
+          git push
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger CI/CD to rebuild, release and redeploy
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run ci.yml --ref main

@@ -1,53 +1,88 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
+  workflow_dispatch: # also triggered by the CT workflow after it commits a new model/data
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  IMAGE: ghcr.io/${{ github.repository }}
+  PYTHON_VERSION: "3.12"
 
 jobs:
   lint-test:
-    name: Lint + test
+    name: Lint + unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
-      - name: Install
-        run: pip install -e ".[dev]"
+      - run: pip install -e ".[dev]"
       - name: Lint (ruff)
         run: ruff check . && ruff format --check .
-      - name: Test (pytest)
+      - name: Unit tests (pytest)
         run: pytest -v
+
+  data-gate:
+    name: Data validation gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e .
+      - name: Validate Delhi data snapshot
+        run: python -m aqi.data validate --report validation.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: validation-report
+          path: validation.json
+
+  model-gate:
+    name: Model quality gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e .
+      - name: Main model must beat persistence on the time-ordered holdout
+        run: python -m aqi.models leaderboard --check --report leaderboard.json
+      - name: Job summary
+        if: always()
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          b = json.load(open("leaderboard.json"))
+          print(f"### Model leaderboard (holdout {b['holdout_start']} to {b['holdout_end']})")
+          print("| model | MAE | RMSE |\n|---|---|---|")
+          for k, s in b["scores"].items():
+              print(f"| {k} | {s['mae']} | {s['rmse']} |")
+          PY
 
   build-smoke:
     name: Build image + smoke test
-    needs: lint-test
+    needs: [lint-test, data-gate, model-gate]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build image
         run: docker build --build-arg GIT_SHA=${{ github.sha }} -t aqi-api:ci .
       - name: Run container
         run: docker run -d --name aqi -p 8000:8000 aqi-api:ci
-      - name: Smoke test /health and /version
-        run: |
-          for i in $(seq 1 20); do
-            curl -fsS http://localhost:8000/health && break
-            sleep 1
-          done
-          curl -fsS http://localhost:8000/health | grep -q '"ok"'
-          curl -fsS http://localhost:8000/version | grep -q "${{ github.sha }}"
+      - name: Smoke test
+        run: ./deploy/smoke.sh http://localhost:8000 ${{ github.sha }}
       - name: Container logs on failure
         if: failure()
         run: docker logs aqi
@@ -55,22 +90,82 @@ jobs:
   publish:
     name: Push image to GHCR
     needs: build-smoke
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    outputs:
+      image: ${{ steps.push.outputs.image }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push
+      - name: Build and push :<sha>
+        id: push
         run: |
-          IMAGE_LC=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          IMAGE=ghcr.io/$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
           docker build --build-arg GIT_SHA=${{ github.sha }} \
-            -t "$IMAGE_LC:${{ github.sha }}" -t "$IMAGE_LC:latest" .
-          docker push "$IMAGE_LC:${{ github.sha }}"
-          docker push "$IMAGE_LC:latest"
+            --label org.opencontainers.image.source=https://github.com/${{ github.repository }} \
+            --label org.opencontainers.image.revision=${{ github.sha }} \
+            -t "$IMAGE:${{ github.sha }}" .
+          docker push "$IMAGE:${{ github.sha }}"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Verify pushed image, then release as :latest
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull and run the exact image from the registry
+        run: |
+          docker pull "${{ needs.publish.outputs.image }}:${{ github.sha }}"
+          docker run -d --name aqi -p 8000:8000 "${{ needs.publish.outputs.image }}:${{ github.sha }}"
+      - name: Post-deploy smoke test
+        run: ./deploy/smoke.sh http://localhost:8000 ${{ github.sha }}
+      - name: Promote image to :latest
+        run: |
+          IMAGE="${{ needs.publish.outputs.image }}"
+          docker tag "$IMAGE:${{ github.sha }}" "$IMAGE:latest"
+          docker push "$IMAGE:latest"
+          echo "Released \`$IMAGE:${{ github.sha }}\` as \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
+
+  pages:
+    name: Publish dashboard to GitHub Pages
+    needs: build-smoke
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -e .
+      - name: Build dashboard
+        run: python -m aqi.report --out site/index.html
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v5
