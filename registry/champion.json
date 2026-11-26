@@ -1,5 +1,7 @@
 {
-  "champion": "v1",
-  "history": [],
-  "updated_at": "2026-11-26T21:18:19Z"
+  "champion": "v2",
+  "history": [
+    "v1"
+  ],
+  "updated_at": "2026-11-26T22:15:04Z"
 }

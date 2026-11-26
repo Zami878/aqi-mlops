@@ -1,0 +1,45 @@
+{
+  "model": "hgb",
+  "features": [
+    "aqi_lag0",
+    "aqi_lag1",
+    "aqi_lag2",
+    "aqi_lag6",
+    "aqi_roll3",
+    "aqi_roll7",
+    "pm2_5_diff1",
+    "pm2_5",
+    "pm10",
+    "no2",
+    "so2",
+    "co",
+    "o3",
+    "temp",
+    "humidity",
+    "wind",
+    "precip",
+    "doy_sin",
+    "doy_cos",
+    "dow"
+  ],
+  "train_start": "2022-08-05",
+  "train_end": "2026-08-26",
+  "holdout_start": "2026-08-27",
+  "holdout_end": "2026-11-24",
+  "holdout": {
+    "mae": 46.96,
+    "rmse": 61.75,
+    "n": 90
+  },
+  "persistence_holdout": {
+    "mae": 51.36,
+    "rmse": 67.75,
+    "n": 90
+  },
+  "data_sha256": "6ad41867044b",
+  "trigger": [
+    "forced"
+  ],
+  "version": "v2",
+  "registered_at": "2026-11-26T22:15:04Z"
+}
