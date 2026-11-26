@@ -165,17 +165,11 @@ jobs:
           docker push "$IMAGE:latest"
           echo "Released \`$IMAGE:${{ github.sha }}\` as \`:latest\`" >> "$GITHUB_STEP_SUMMARY"
 
-  pages:
-    name: Publish dashboard to GitHub Pages
+  pages-build:
+    name: Build dashboard
     needs: build-smoke
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -189,5 +183,19 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site
+
+  # Separate job (GitHub's recommended layout): deploying in the same job as the upload can race
+  # the artifact listing and fail with "No artifacts named github-pages".
+  pages:
+    name: Publish dashboard to GitHub Pages
+    needs: pages-build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v5
