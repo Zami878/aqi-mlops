@@ -1,2 +1,4 @@
 {"time": "2026-11-26T21:18:19Z", "event": "promoted", "run": "local", "champion": "v1", "candidate": "v1", "reasons": ["no champion model yet (bootstrap)"], "checks": {"predictions_finite": true, "beats_persistence": true, "beats_champion": true}}
 {"time": "2026-11-26T21:18:21Z", "event": "monitor", "run": "local", "decision": "healthy", "reasons": []}
+{"time": "2026-11-26T21:36:45Z", "event": "monitor", "run": "45899278583", "decision": "healthy", "reasons": []}
+{"time": "2026-11-26T21:36:48Z", "event": "skipped", "run": "45899278583", "champion": "v1", "candidate": null, "reasons": ["monitor decision: healthy"], "checks": null}
