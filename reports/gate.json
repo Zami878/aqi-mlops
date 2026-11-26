@@ -1,6 +1,6 @@
 {
   "action": "promoted",
-  "candidate_version": "v2",
+  "candidate_version": "v3",
   "promote": true,
   "checks": {
     "predictions_finite": true,
@@ -33,5 +33,5 @@
     "forced"
   ],
   "monitor_decision": "healthy",
-  "champion_after": "v2"
+  "champion_after": "v3"
 }

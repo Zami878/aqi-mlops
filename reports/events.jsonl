@@ -5,3 +5,5 @@
 {"time": "2026-11-26T22:15:03Z", "event": "monitor", "run": "45903509293", "decision": "healthy", "reasons": []}
 {"time": "2026-11-26T22:15:04Z", "event": "promoted", "run": "45903509293", "champion": "v2", "candidate": "v2", "reasons": ["forced"], "checks": {"predictions_finite": true, "beats_persistence": true, "beats_champion": true}}
 {"time": "2026-11-26T22:18:42Z", "event": "rollback", "run": "45903895261", "champion": "v1", "previous": "v2"}
+{"time": "2026-11-26T22:22:10Z", "event": "monitor", "run": "45904277268", "decision": "healthy", "reasons": []}
+{"time": "2026-11-26T22:22:13Z", "event": "promoted", "run": "45904277268", "champion": "v3", "candidate": "v3", "reasons": ["forced"], "checks": {"predictions_finite": true, "beats_persistence": true, "beats_champion": true}}
