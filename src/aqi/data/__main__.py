@@ -18,6 +18,7 @@ def main(argv: list[str] | None = None) -> int:
     v = sub.add_parser("validate", help="run the validation gate")
     v.add_argument("--path", type=Path, default=fetch.DEFAULT_PATH)
     v.add_argument("--report", type=Path, default=Path("reports/validation.json"))
+    v.add_argument("--max-age-days", type=int, default=None)
     args = p.parse_args(argv)
 
     if args.cmd == "fetch":
@@ -27,7 +28,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"wrote {len(df)} days ({span}) to {path}")
         return 0
 
-    rep = validate.validate(fetch.load(args.path))
+    rep = validate.validate(fetch.load(args.path), max_age_days=args.max_age_days)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(rep.to_dict(), indent=2))
     print(json.dumps(rep.to_dict(), indent=2))

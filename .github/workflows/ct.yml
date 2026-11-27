@@ -37,8 +37,8 @@ jobs:
       - name: Fetch latest Delhi data
         run: python -m aqi.data fetch
 
-      - name: Data validation gate (stops the run on hard errors)
-        run: python -m aqi.data validate
+      - name: Data validation gate (stops on hard errors or stale data)
+        run: python -m aqi.data validate --max-age-days 3
 
       - name: Monitor champion (drift, skill, sensor faults)
         run: python -m aqi.monitor
