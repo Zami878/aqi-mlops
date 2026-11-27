@@ -1,0 +1,74 @@
+# Unit tests for the alert rules in alerts.yml, run in CI with:
+#   promtool test rules deploy/prometheus/alerts_test.yml
+# Each test feeds made-up (simulated) metric series and says which alerts must fire, and when.
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 15s
+
+tests:
+  # API stops answering scrapes: AqiApiDown waits 1m ("for: 1m"), then fires.
+  - interval: 15s
+    input_series:
+      - series: 'up{job="aqi-api", instance="api:8000"}'
+        values: "1 1 0x10"
+    alert_rule_test:
+      - eval_time: 45s
+        alertname: AqiApiDown
+        exp_alerts: [] # down for 15s only: still pending
+      - eval_time: 2m
+        alertname: AqiApiDown
+        exp_alerts:
+          - exp_labels: {severity: critical, job: aqi-api, instance: "api:8000"}
+            exp_annotations:
+              summary: AQI API is not responding to Prometheus scrapes
+
+  # A stuck sensor shows up as aqi_data_faults > 0 and fires at once.
+  - interval: 15s
+    input_series:
+      - series: 'aqi_data_faults{job="aqi-api", instance="api:8000"}'
+        values: "0 0 1 1"
+    alert_rule_test:
+      - eval_time: 15s
+        alertname: AqiSensorFault
+        exp_alerts: []
+      - eval_time: 45s
+        alertname: AqiSensorFault
+        exp_alerts:
+          - exp_labels: {severity: warning, job: aqi-api, instance: "api:8000"}
+            exp_annotations:
+              summary: Sensor-fault pattern in recent data; retraining is blocked
+
+  # Champion worse than persistence on recent days: AqiModelLostSkill must fire.
+  - interval: 15s
+    input_series:
+      - series: 'aqi_recent_mae{model="champion", job="aqi-api", instance="api:8000"}'
+        values: "40 40 60 60"
+      - series: 'aqi_recent_mae{model="persistence", job="aqi-api", instance="api:8000"}'
+        values: "50 50 50 50"
+    alert_rule_test:
+      - eval_time: 15s
+        alertname: AqiModelLostSkill
+        exp_alerts: [] # 40 < 50: champion still has skill
+      - eval_time: 45s
+        alertname: AqiModelLostSkill
+        exp_alerts:
+          - exp_labels: {severity: warning, job: aqi-api, instance: "api:8000"}
+            exp_annotations:
+              summary: Champion is no better than persistence on recent unseen days
+
+  # Monitor decision "retrain" fires the info alert; "healthy" does not.
+  - interval: 15s
+    input_series:
+      - series: 'aqi_monitor_decision{decision="retrain", job="aqi-api", instance="api:8000"}'
+        values: "0 1"
+    alert_rule_test:
+      - eval_time: 0s
+        alertname: AqiRetrainNeeded
+        exp_alerts: []
+      - eval_time: 15s
+        alertname: AqiRetrainNeeded
+        exp_alerts:
+          - exp_labels: {severity: info, decision: retrain, job: aqi-api, instance: "api:8000"}
+            exp_annotations:
+              summary: Monitor decided the champion should be retrained
