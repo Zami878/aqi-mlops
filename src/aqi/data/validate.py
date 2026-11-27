@@ -11,6 +11,7 @@ Two levels:
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from datetime import date
 
 import pandas as pd
 
@@ -82,7 +83,20 @@ def find_faults(df: pd.DataFrame) -> list[str]:
     return faults
 
 
-def validate(df: pd.DataFrame, recent_days: int = 30) -> Report:
+def check_freshness(end: date, today: date, max_age_days: int) -> str | None:
+    """Return a validation error when the newest available data is too old."""
+    age = (today - end).days
+    if age > max_age_days:
+        return f"data is stale: newest day {end} is {age} days old (max {max_age_days})"
+    return None
+
+
+def validate(
+    df: pd.DataFrame,
+    recent_days: int = 30,
+    max_age_days: int | None = None,
+    today: date | None = None,
+) -> Report:
     rep = Report(rows=len(df))
     if df.empty:
         rep.errors.append("dataset is empty")
@@ -113,4 +127,12 @@ def validate(df: pd.DataFrame, recent_days: int = 30) -> Report:
             rep.errors.append(f"{col}: {bad} values outside [{lo}, {hi}]")
 
     rep.faults = find_faults(df.tail(recent_days))
+    if max_age_days is not None:
+        newest = df.index.max()
+        if not pd.isna(newest):
+            freshness_error = check_freshness(
+                newest.date(), today if today is not None else date.today(), max_age_days
+            )
+            if freshness_error is not None:
+                rep.errors.append(freshness_error)
     return rep
