@@ -81,6 +81,11 @@ jobs:
           docker run --rm --entrypoint promtool \
             -v "$PWD/deploy/prometheus:/etc/prometheus:ro" \
             prom/prometheus:v3.16.0 check config /etc/prometheus/prometheus.yml
+      - name: promtool unit tests for alert rules
+        run: |
+          docker run --rm --entrypoint promtool \
+            -v "$PWD/deploy/prometheus:/etc/prometheus:ro" \
+            prom/prometheus:v3.16.0 test rules /etc/prometheus/alerts_test.yml
       - name: Grafana dashboard JSON parses and every panel has a query
         run: |
           python3 - <<'PY'

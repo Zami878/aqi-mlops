@@ -21,7 +21,9 @@ groups:
           summary: Monitor decided the champion should be retrained
 
       - alert: AqiModelLostSkill
-        expr: aqi_recent_mae{model="champion"} >= aqi_recent_mae{model="persistence"}
+        # ignoring(model): the two series differ only in their "model" label, so without it
+        # Prometheus finds no matching pair and the alert can never fire.
+        expr: aqi_recent_mae{model="champion"} >= ignoring(model) aqi_recent_mae{model="persistence"}
         labels: {severity: warning}
         annotations:
           summary: Champion is no better than persistence on recent unseen days
