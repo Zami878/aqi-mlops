@@ -1,30 +1,30 @@
 {
-  "checked_at": "2026-11-27T11:05:12Z",
+  "checked_at": "2026-11-28T10:42:22Z",
   "simulated": false,
-  "data_end": "2026-11-26",
+  "data_end": "2026-11-27",
   "champion": "v3",
   "validation": {
-    "rows": 1575,
+    "rows": 1576,
     "start": "2022-08-05",
-    "end": "2026-11-26",
+    "end": "2026-11-27",
     "errors": [],
     "faults": [],
     "ok": true
   },
   "psi": {
-    "aqi": 0.0264,
-    "pm2_5": 0.0264,
-    "pm10": 0.1092,
-    "no2": 0.5318,
-    "co": 0.5392,
-    "temp": 0.4412,
-    "humidity": 0.8989,
-    "wind": 1.4665
+    "aqi": 0.0342,
+    "pm2_5": 0.0342,
+    "pm10": 0.123,
+    "no2": 0.3566,
+    "co": 0.5307,
+    "temp": 0.9636,
+    "humidity": 0.7605,
+    "wind": 1.4242
   },
   "performance": {
     "n": 30,
-    "mae": 45.51,
-    "persistence_mae": 51.01
+    "mae": 46.82,
+    "persistence_mae": 51.8
   },
   "drift_warnings": [
     "co",
